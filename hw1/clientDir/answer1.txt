@@ -1,0 +1,27 @@
+****************************************
+** Welcome to the information server. **
+****************************************
+% printenv PATH
+PATH=bin:.
+% ls
+bin
+test.html
+% setenv PATH .
+% printenv PATH
+PATH=.
+% ls
+Unknown command: [ls].
+% setenv PATH bin
+% ls -al bin
+total 220
+drwxr-xr-x 2 frostfrog frostfrog   4096 Oct 27 16:02 .
+drwxr-xr-x 3 frostfrog frostfrog   4096 Oct 27 16:43 ..
+-rwxr-xr-x 1 frostfrog frostfrog  52288 Oct 19 16:42 cat
+-rwxr-xr-x 1 frostfrog frostfrog 108008 Oct 19 16:42 ls
+-rwxr-xr-x 1 frostfrog frostfrog   6793 Oct 19 22:15 noop
+-rwxr-xr-x 1 frostfrog frostfrog  11976 Oct 19 14:59 number
+-rwxr-xr-x 1 frostfrog frostfrog   8289 Oct 19 14:58 removetag
+-rwxr-xr-x 1 frostfrog frostfrog   8951 Oct 19 14:59 removetag0
+% date
+Unknown command: [date].
+% exit

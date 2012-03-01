@@ -1,0 +1,10 @@
+GET /index.html HTTP/1.1
+Host: 192.168.55.55:80
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.2 (KHTML, like Gecko) Iron/15.0.900.2 Chrome/15.0.900.2 Safari/535.2
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Encoding: gzip,deflate,sdch
+Accept-Language: zh-TW,zh;q=0.8,en-US;q=0.6,en;q=0.4
+Accept-Charset: Big5,utf-8;q=0.7,*;q=0.3
+
+

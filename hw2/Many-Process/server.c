@@ -1,0 +1,188 @@
+#include"lib.h"
+#include "shell.c"
+#define SA struct sockaddr 
+#define KEY 2355
+
+
+//global variable
+extern CliData *all_cliFD[USERSIZE];
+
+static int socket_init(struct sockaddr_in *seraddr, const char* port){
+    int listenfd;
+
+    bzero(seraddr,sizeof(&seraddr));
+    seraddr->sin_family=AF_INET;
+    seraddr->sin_addr.s_addr=htonl(INADDR_ANY);
+    seraddr->sin_port=htons(atoi(port));
+
+    return listenfd;
+}
+
+int findEmptyPtr(CliData *ary[]){
+    int i;
+    for(i=1; i<USERSIZE; i++){
+        if(ary[i]->FD==0)
+            return i;
+    }
+}
+
+
+int main(int argc,char **argv,char **env)
+{
+    int listenfd,cliaddr_len,pid, clifd, i;
+    struct sockaddr_in seraddr,cliaddr;
+    char msg_buff[10000];
+
+    if(argc < 2){
+        printf("Need 1 argument 'port'\n");        
+        return 1;
+    }
+
+    //Child return signal
+    signal(SIGCHLD, retrieve);
+
+
+    //port = argv[1]
+    listenfd=socket(AF_INET,SOCK_STREAM,0);
+    socket_init(&seraddr,argv[1]);
+    bind(listenfd,(SA*)&seraddr,sizeof(seraddr));
+    listen(listenfd,0);
+
+    //init
+    cliaddr_len = sizeof(cliaddr);
+    bzero(msg_buff,sizeof(msg_buff));
+
+
+    /* set environment*/
+    chdir("/home/Master1_up/NP/hw2/RAS");    
+    setenv("PATH","bin:.",1);    
+
+    char *welcome = "****************************************\n** Welcome to the information server. **\n****************************************\n\0";
+
+    //test
+
+    int global_pipe[USERSIZE][2];
+//    all_cliFD = malloc( sizeof(int*) * USERSIZE );
+    
+    //shared memory
+//    int shmid = shmget( IPC_PRIVATE, 800000, IPC_CREAT|0666);
+    int shmid = shmget( SHMKEY, 800000, IPC_CREAT|0666);
+    CliData *cli_ptr = (CliData *)shmat(shmid, NULL,0);
+    for(i=0; i<USERSIZE; i++){
+        all_cliFD[i] = cli_ptr;
+        all_cliFD[i]->FD = 0;
+        all_cliFD[i]->pid = -1;
+        all_cliFD[i]->online = 0;
+        bzero(all_cliFD[i]->buff, sizeof(all_cliFD[i]->buff));
+        int fifoUsed = 0;
+        cli_ptr++;
+        global_pipe[i][0] = 0;
+        global_pipe[i][0] = 1;
+    }
+
+    while(1){        
+        if( (clifd = accept(listenfd,(SA*)&cliaddr,&cliaddr_len)) ){            
+            usleep(200);
+            /*init CliData array*/  
+            int ptr = findEmptyPtr(all_cliFD); 
+            all_cliFD[ptr]->online = 1;
+            all_cliFD[ptr]->FD = clifd;
+            bzero(all_cliFD[ptr]->name, sizeof(all_cliFD[ptr]->name));
+            long int tmp_addr = ntohl(cliaddr.sin_addr.s_addr);
+            char *tmp_addr_str = all_cliFD[ptr]->ip;
+            bzero(tmp_addr_str,sizeof(tmp_addr_str));
+/*            int end_addr_ptr = 0;
+            for(i=0; i<4; i++){
+                int addr_tmp_int = (tmp_addr>>((3-i)*8)) & 0xff;
+                gcvt( addr_tmp_int , order(addr_tmp_int), tmp_addr_str);
+                tmp_addr_str += sizeof(char)*(order(addr_tmp_int))+1;
+                if(i!=3){
+                    *(tmp_addr_str - 1 )='.';
+                }
+                end_addr_ptr += (sizeof(char)*(order(addr_tmp_int)))+1;
+            }
+            end_addr_ptr--;
+            all_cliFD[ptr]->ip[23]='\0';
+            all_cliFD[ptr]->ip[end_addr_ptr++] = '/';            
+            gcvt(  htons(cliaddr.sin_port), order(htons(cliaddr.sin_port)), tmp_addr_str);
+            all_cliFD[ptr]->ip[ end_addr_ptr+order(htons(cliaddr.sin_port)) ]='\0';*/
+            strcpy(all_cliFD[ptr]->ip, "nctu/5566");
+            all_cliFD[ptr]->sem_key = KEY+1;
+            bzero(all_cliFD[ptr]->buff, sizeof(all_cliFD[ptr]->buff));
+            all_cliFD[ptr]->fifoUsed = 0;
+            /*End init CliData array*/
+
+            //sent welcome messages
+            write(clifd,welcome,strlen(welcome));
+            char tmp_msg[50];
+            bzero(tmp_msg, sizeof(tmp_msg));
+            sprintf(tmp_msg,"*** User '(no name)' entered from %s. ***\n\0", all_cliFD[FdToPtr(all_cliFD,clifd)]->ip);
+            broadcast(tmp_msg, clifd, all_cliFD, 1);
+            
+            if((pid = fork() ) < 0){
+                printf("Fork error\n");
+                return 1;
+            }
+            if(pid == 0){  //child
+                close(listenfd); 
+                for(i=3; i<USERSIZE; i++){
+//                    int tmp_FD;
+//                    if( ((tmp_FD=all_cliFD[i]->FD)!=0)  &&  (all_cliFD[i]->FD!=clifd) ){
+//                        close(tmp_FD);
+//                    }
+                    if(i != clifd){
+                        close(i);
+                    }                        
+                } 
+                all_cliFD[ FdToPtr(all_cliFD, clifd) ]->pid = getpid();
+                write(clifd,"% ",2);
+                shell(clifd, global_pipe);
+
+
+                /*EXIT reset all_cliFD[clifd]*/
+                int ptr = FdToPtr(all_cliFD,clifd);
+                all_cliFD[ptr]->online = 0;                 
+                all_cliFD[ptr]->pid = -1;
+                char exit_msg[30];
+                bzero(exit_msg,sizeof(exit_msg));
+                if(all_cliFD[ptr]->fifoUsed == 1){
+                    char file_path[50];
+                    char ptr_str[5];
+                    bzero(file_path, sizeof(file_path));
+                    strcat(file_path, FIFODIR);
+                    gcvt( ptr, order(ptr), ptr_str);
+                    strcat(file_path, ptr_str);
+                    mkfifo(file_path , 0666);
+                    int FIFOFD = open(file_path, O_RDONLY);
+                    close(FIFOFD);
+                    all_cliFD[ptr]->fifoUsed = 0; 
+                }
+                if( strlen(all_cliFD[ptr]->name) > 0){
+                    sprintf(exit_msg, "*** User '%s' left. ***\n\0", all_cliFD[ptr]->name);
+                }
+                else
+                    sprintf(exit_msg, "*** User '(no name)' left. ***\n\0");
+                broadcast(exit_msg, clifd, all_cliFD, 0);
+
+
+                all_cliFD[ptr]->fifoUsed = 0;
+                all_cliFD[ptr]->FD = 0;
+                all_cliFD[ptr]->pid = -1;
+                all_cliFD[ptr]->online = 0;
+                close(clifd);
+                printf("PTR %d exit\n",ptr);
+                break;
+            }   
+            else{
+                printf("we have client %d\n",clifd);
+//                close(clifd);
+            }            
+        }
+        else{
+            printf("Server error\n");
+            return 1;
+        }
+    }
+}
+
+
