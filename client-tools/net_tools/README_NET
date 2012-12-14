@@ -1,0 +1,99 @@
+
+ITRI cloud 
+
+********************************************
+Virtual machine network bottleneck analyze
+
+date: 2012/11/30
+edit by: sung-jer Lu
+********************************************
+
+
+system:
+
+1. XEN (version: 4.1.2)
+2. network card of Virtual machine: rtl8139 (XEN VM default network card)
+
+
+
+Retransmission Usage:
+
+make XEN
+
+1. configuration
+./conf.sh
+(you must have the privilege of 'root')
+
+2. setup
+./restart.sh
+(every time when you restart VM, you must restart this shell)
+
+3.
+Boot your VM
+
+4.
+for http or ftp upload retransmission rate
+./rate <mode> <analyze times>
+
+
+<mode>
+mode 1: analyze bottleneck of http transmission
+mode 2: analyze bottleneck of ftp transmission
+
+<analyze times>
+total analyze times, one second per analyze
+
+EX: ./rate 1 30
+
+analyze network bottleneck for 30 times(one times per second)
+
+if rate number over threshold than it may have bottleneck
+
+5.
+if you want restart VM
+go step 2
+
+
+
+
+Virtual ACK Usage:
+
+/*******************/
+this version of tools is bind special IP
+so we hightly recommend client and server in same subnet
+you can change source and dest IP in /home/xen-4.1.2/tools/ioemu-qemu-xen/net.c
+line 623 for destination IP
+line 625 for source IP
+
+
+1. Decompress xen-4.1.2/client-tools/net_tools/VIRT-ACK_tools.tar
+
+2. copy this directory to xen-4.1.2/
+
+3. replace original "tools" directory
+
+4. cd ./tools
+
+5. make && make install
+
+6. ./conf.sh
+
+7. ./restart.sh
+
+8. for calculate ideal maximum speed
+./net_analyze <mode> <analyze times>
+
+<mode>
+mode 1: analyze speed of receive packets
+mode 2: analyze speed of send packets
+
+<analyze times>
+total analyze times, one second per analyze
+
+EX: ./net_analyze 1 30
+
+analyze speed of receive packets for 30 times(one times per second)
+
+9.
+if you want restart VM
+go step 7

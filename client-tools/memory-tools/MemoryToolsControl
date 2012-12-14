@@ -1,0 +1,68 @@
+#!/bin/sh
+make
+
+function page_used()
+{
+    clear
+    echo "[Memory used tools]" 
+    echo "1 : Start Sample"
+    echo "2 : Go back" 
+    read -p "Key Command Number: " mode
+    case $mode in
+      [1]*)
+        xm list
+        read -p "Give Domain ID: " id
+        read -p "Give percent threshold(ex: 80%->80): " percent
+        read -p "Give monitor time[senconds]: " monitor_time
+        clear
+        PAGE_USED/hypercall $id $percent $monitor_time
+      ;;
+      [2]*)   
+        main
+      ;;
+    esac
+}
+
+function swap_calculate()
+{
+    clear
+    echo "[Caluate swap numbers tools]"
+    echo "1 : Start Sample"
+    echo "2 : Go back"
+    read -p "Key Command Number: " mode
+    case $mode in
+      [1]*)
+        xm list
+        read -p "Give Domain ID: " id
+        read -p "OS type 0->Linux 1->Windows: " os_type
+        clear
+        SCHEDULE_SWAP/swap_calculate $id $os_type
+      ;;
+      [2]*)
+        main
+      ;;
+    esac
+} 
+
+function main()
+{
+    clear
+    echo "[Main Controler]"
+    echo "1 : Page used monitor tools"
+    echo "2 : Caculate swap numbers tools"
+    echo "3 : Quit"
+    read -p "Key Command Number: " mode
+    case $mode in
+      [1]*) 
+         page_used
+      ;;
+      [2]*)
+         swap_calculate
+      ;;
+      [3]*)   
+        break
+      ;;
+    esac
+}
+
+main

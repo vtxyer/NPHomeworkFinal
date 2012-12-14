@@ -1,0 +1,48 @@
+ITRI cloud 
+********************************************
+virtual machine bottleneck analysis toolkits  v1.1
+
+date: 2012/11/30
+********************************************
+
+I.SETUP ENVIRONMENT
+    [1]. If you already a Linux environment compatible with Xen 4.1.2, you may go directly to Step3:
+        Step1:
+        Install Fedora15 64bits
+            source: http://www.cyberciti.biz/tips/fedora-15-download-cd-dvd-iso.html 
+            after install Fedora15 install needed library 
+                $yum groupinstall "Development tools" "Server Platform Development"
+    
+        Step2:
+        Install Kernel-3.2.15 (this is the kernel we use for development. the other versions of kernels may also work.)
+            source: http://www.kernel.org/pub/linux/kernel/v3.0/linux-3.2.15.tar.gz   
+            "make menuconfig" and then select all options in "Device Drivers->Xen driver support"
+    
+        Step3:
+        Install Xen-4.1.2
+            we have already patched xen source in our CD, so you can just copy xen-4.1.2 directory from our CD. Then do the follows steps:
+                1. cp -r /media/xen-4.1.2 /xen-4.1.2 (we assume CD-ROM will be mounted on /media)
+                2. cd /xen-4.1.2 and "make clean"(there are maybe some errors related stubdom, which you can just ignore)    
+                3. install libraries required for building XEN: dev86, glibc-32bits, pciutils-devel, SDL_net, SDL-devel, SDL-net-devel 
+                4. run "INSTALL-XEN.sh"(if there are build errors, most likely it's due to missing libraries. Just install the library required according to the error messages.
+				   And then use "make clean" and try to build XEN again.
+ 
+
+II.RUN OUR BENCHMARK TOOLS
+    The tools we demonstrated in the final report are all located under "xen-4.1.2/client-tools", 
+    please see each README to know how to use tools
+
+
+III. Reference
+    [1]. If you have any problems contact us use follows email: 
+        呂松澤: ttin654@gmail.com
+        陳義永: chen.yi-yung@livemail.tw
+        蔡孟儒: vtxyer@gmail.com
+
+    [2]. Our experiment evironment is 
+        Memory: 64GB memory
+        CPU: 2x Intel(R) Xeon(R) CPU E5620  @ 2.40GHz
+        OS:
+            Fedora15 64bits
+            Kernel-3.2.15
+            Xen-4.1.2(with our customization)

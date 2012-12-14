@@ -1,0 +1,7 @@
+
+#!/bin/bash
+
+rm -f /home/netlog/net
+rm -f /home/netlog/net2
+rm -f /home/netlog/dump
+rm -f /home/netlog/transmit_status 

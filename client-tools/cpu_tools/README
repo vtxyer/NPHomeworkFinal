@@ -1,0 +1,19 @@
+CPU performance bottleneck detection
+
+*** There are two C files and one Makefile
+1. cluster.c cluster.h
+CPU monitor tools source code
+
+2. Makefile
+Can use instruction 'make' to compile C source code
+
+
+*** You can follow the steps below:
+(1) $cd client_tools/cpu_tools/ && make
+Change working directory into client_tools/cpu_tools/ and compile source code.
+After make you can run excutable file 'cpu_monitor'.
+    
+(2) $./cpu_monitor [domain id]
+The tool will start monitoring the VM. It will show the result per second as default.
+Press 'D' (or 'd') can let you decide how long to update the results.
+Press 'Q' (or 'q') can quit the program and stop monitoring.

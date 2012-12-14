@@ -1,0 +1,55 @@
+
+ITRI cloud 
+
+********************************************
+Virtual machine network bottleneck analyze
+
+date: 2012/8/20
+edit by: sung-jer Lu
+********************************************
+
+
+system:
+
+1. XEN (version: 4.1.2)
+2. network card of Virtual machine: rtl8139 (XEN VM default network card)
+
+
+
+Usage:
+
+1. configuration
+./conf.sh
+(you must have the privilege of 'root')
+
+2. setup
+./restart.sh
+(every time when you restart VM, you must restart this shell)
+
+3.
+Boot your VM
+
+4.
+./net_analyze <mode> <analyze times>
+
+<mode>
+mode 1: analyze speed of receive packets
+mode 2: analyze speed of send packets
+
+<analyze times>
+total analyze times, one second per analyze
+
+EX: ./net_analyze 1 30
+
+analyze speed of receive packets for 30 times(one times per second)
+
+5.
+check packets content
+you can find packets content in /home/netlog/dump
+(this log shows in string mode ,it will very large when there are a log of packets)
+
+6.
+if you want restart VM
+go step 2
+
+
