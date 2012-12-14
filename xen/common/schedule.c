@@ -1386,9 +1386,9 @@ static void schedule(void)
                     next->domain->test_cr3[i].touched = 1;
                     break;
                 }
-                tmp_val =
-                    guest_walk_full_tables(next, next->domain->arch.p2m, &gw, tmp_cr3, NULL, 
-                            pfec[0], next->arch.paging.mode->guest_levels, next->domain->os_type);
+//                tmp_val =
+//                    guest_walk_full_tables(next, next->domain->arch.p2m, &gw, tmp_cr3, NULL, 
+//                            pfec[0], next->arch.paging.mode->guest_levels, next->domain->os_type);
                 if(   tmp_val != INVALID_GFN )
                 {
                     next->domain->test_cr3[i].swap_new_num = tmp_val;                 
@@ -1402,9 +1402,6 @@ static void schedule(void)
         }
         spin_unlock(&(next->domain->test_cr3_lock));
     }
-
-
-
 
 
 
