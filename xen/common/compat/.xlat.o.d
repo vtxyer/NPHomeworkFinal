@@ -1,0 +1,32 @@
+xlat.o: xlat.c /home/Xen/Bottleneck/xen/include/xen/compat.h \
+ /home/Xen/Bottleneck/xen/include/xen/config.h \
+ /home/Xen/Bottleneck/xen/include/xen/compiler.h \
+ /home/Xen/Bottleneck/xen/include/asm/config.h \
+ /home/Xen/Bottleneck/xen/include/xen/types.h \
+ /home/Xen/Bottleneck/xen/include/asm/types.h \
+ /home/Xen/Bottleneck/xen/include/asm/compat.h \
+ /home/Xen/Bottleneck/xen/include/compat/xlat.h \
+ /home/Xen/Bottleneck/xen/include/xen/lib.h \
+ /home/Xen/Bottleneck/xen/include/xen/inttypes.h \
+ /home/Xen/Bottleneck/xen/include/xen/stdarg.h \
+ /home/Xen/Bottleneck/xen/include/xen/xmalloc.h \
+ /home/Xen/Bottleneck/xen/include/xen/string.h \
+ /home/Xen/Bottleneck/xen/include/asm/string.h \
+ /home/Xen/Bottleneck/xen/include/asm/bug.h \
+ /home/Xen/Bottleneck/xen/include/asm/x86_64/bug.h \
+ /home/Xen/Bottleneck/xen/include/compat/xen.h \
+ /home/Xen/Bottleneck/xen/include/public/xen.h \
+ /home/Xen/Bottleneck/xen/include/public/xen-compat.h \
+ /home/Xen/Bottleneck/xen/include/public/arch-x86/xen.h \
+ /home/Xen/Bottleneck/xen/include/public/arch-x86/../xen.h \
+ /home/Xen/Bottleneck/xen/include/public/arch-x86/xen-x86_64.h \
+ /home/Xen/Bottleneck/xen/include/public/xen-compat.h \
+ /home/Xen/Bottleneck/xen/include/compat/arch-x86/xen.h \
+ /home/Xen/Bottleneck/xen/include/compat/arch-x86/../xen.h \
+ /home/Xen/Bottleneck/xen/include/compat/arch-x86/xen-x86_32.h \
+ /home/Xen/Bottleneck/xen/include/compat/event_channel.h \
+ /home/Xen/Bottleneck/xen/include/public/event_channel.h \
+ /home/Xen/Bottleneck/xen/include/public/xen.h \
+ /home/Xen/Bottleneck/xen/include/compat/xen.h \
+ /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
+ /home/Xen/Bottleneck/xen/include/public/vcpu.h

@@ -1306,9 +1306,9 @@ static void schedule(void)
 
 
 
-    unsigned long i, tmp_cr3, tmp_val;
+    unsigned long i, tmp_cr3;
     uint32_t pfec[1];    
-    walk_t gw;
+//    walk_t gw;
 
 
 	struct cpu_user_regs dump_regs;
@@ -1380,22 +1380,6 @@ static void schedule(void)
                     && next->domain->test_cr3[i].touched == 0
                     )
             {
-                next->domain->non2a = 0;
-                next->domain->a2non = 0;
-                if( (tmp_val>next->domain->test_cr3[i].swap_num) == INVALID_GFN ){
-                    next->domain->test_cr3[i].touched = 1;
-                    break;
-                }
-//                tmp_val =
-//                    guest_walk_full_tables(next, next->domain->arch.p2m, &gw, tmp_cr3, NULL, 
-//                            pfec[0], next->arch.paging.mode->guest_levels, next->domain->os_type);
-                if(   tmp_val != INVALID_GFN )
-                {
-                    next->domain->test_cr3[i].swap_new_num = tmp_val;                 
-                }
-                else
-                    next->domain->test_cr3[i].swap_new_num = 0;
-
                 next->domain->test_cr3[i].touched = 1;
                 break;
             }

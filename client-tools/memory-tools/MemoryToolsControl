@@ -32,7 +32,7 @@ function swap_calculate()
     read -p "Key Command Number: " mode
     case $mode in
       [1]*)
-        xm list
+        xl list
         read -p "Give Domain ID: " id
         read -p "OS type 0->Linux 1->Windows: " os_type
         clear

@@ -1041,9 +1041,12 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
             }
             break;
         case 7:
-            tmp_val = guest_walk_full_tables(v, p2m, &gw, gfn, NULL, pfec[0],
-                  v->arch.paging.mode->guest_levels, d->os_type);
-            printk("<VT> cr3:%lx swap_number:%lu\n", gfn, tmp_val);
+            /*walk cr3 in array*/
+            for(i=0; i<gfn; i++){
+                tmp_val = guest_walk_full_tables(v, p2m, &gw, longBuff[i], NULL, pfec[0],
+                      v->arch.paging.mode->guest_levels, d->os_type);
+                d->test_cr3[i].swap_num = tmp_val;
+            }
             break;
         case 8:
             /*print recent cr3*/
@@ -1071,39 +1074,21 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
             d->a2non = 0;
             break;
         case 15:
-            /*copy recent_cr3 to test_cr3 and walk first times*/
+            /*copy recent_cr3 to test_cr3*/
             spin_lock(&(d->recent_cr3_lock));
             for(i=0; i<RECENT_CR3_SIZE; i++){
                 d->test_cr3[i].cr3 = d->recent_cr3[i].cr3;
-                d->test_cr3[i].swap_num = INVALID_GFN;
-                d->test_cr3[i].swap_new_num = 0;
                 d->test_cr3[i].touched = 0;
             }
             spin_unlock(&(d->recent_cr3_lock));
+            break;
+        case 16:
+            /*return cr3 back to Dom0*/
             longBuff[0] = 0;
             for(i=0; i<RECENT_CR3_SIZE; i++){
                 if(d->test_cr3[i].cr3 != 0){
                     longBuff[0]++;
                     longBuff[longBuff[0]] = d->test_cr3[i].cr3;
-                }
-            }
-            for(i=0; i<RECENT_CR3_SIZE; i++){
-                tmp_val = guest_walk_full_tables(v, p2m, &gw, d->test_cr3[i].cr3, NULL, pfec[0],
-                       v->arch.paging.mode->guest_levels, d->os_type);
-                d->test_cr3[i].swap_num = tmp_val;
-            }
-            break;
-        case 16:
-            /*Show: copy swap_diff to Dom0*/
-            longBuff[0] = 0;
-            for(i=0; i<RECENT_CR3_SIZE; i++){
-                if( (d->test_cr3[i].touched)==1 
-                        && (d->test_cr3[i].swap_new_num) > (d->test_cr3[i].swap_num)
-                        )
-                {
-                    longBuff[ longBuff[0]+1 ] = 
-                        (d->test_cr3[i].swap_new_num) - (d->test_cr3[i].swap_num);
-                    longBuff[0]++; 
                 }
             }
             break;
@@ -1112,28 +1097,29 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
             d->swap_sample_start = 0;
             break;
         case 18:
-            /*re-sample*/            
-            spin_lock(&(v->domain->test_cr3_lock));
-            for(i=0; i<RECENT_CR3_SIZE; i++){
-                d->test_cr3[i].swap_new_num = 0;
-                d->test_cr3[i].touched = 0;
-            }
-            spin_unlock(&(v->domain->test_cr3_lock));
-            d->swap_sample_start = 1;
-            break;
-        case 19:
-            /*Show: copy swap_num to Dom0*/
-            d->swap_sample_start = 0;
+            /*return touched cr3 back to Dom0*/
             longBuff[0] = 0;
-            spin_lock(&(v->domain->test_cr3_lock));
             for(i=0; i<RECENT_CR3_SIZE; i++){
-                if( (d->test_cr3[i].touched)==1 ){
-                    longBuff[ longBuff[0]+1 ] = (d->test_cr3[i].swap_new_num);
-                    longBuff[0]++; 
+                if(d->test_cr3[i].touched == 1){
+                    longBuff[ longBuff[0]+1 ] = d->test_cr3[i].cr3;
+                    longBuff[0]++;
                 }
             }
-            spin_unlock(&(v->domain->test_cr3_lock));
             break;
+        case 19:
+            /*return touched cr3's swap num back to Dom0*/
+            longBuff[0] = 0;
+            for(i=0; i<RECENT_CR3_SIZE; i++){
+                //if(d->test_cr3[i].swap_num != 0 && d->test_cr3[i].swap_num != INVALID_GFN){
+                    longBuff[ longBuff[0]+1 ] = d->test_cr3[i].swap_num;
+                    longBuff[0]++;
+                //}
+            }
+            break;
+       case 20:
+            /*start schedule sample*/
+            d->swap_sample_start = 1;
+            break;    
     }
 
     return 0;
