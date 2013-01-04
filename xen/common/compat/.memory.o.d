@@ -144,6 +144,7 @@ memory.o: memory.c /home/Xen/Bottleneck/xen/include/xen/config.h \
  /home/Xen/Bottleneck/xen/include/asm/numa.h \
  /home/Xen/Bottleneck/xen/include/xen/multicall.h \
  /home/Xen/Bottleneck/xen/include/asm/multicall.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
  /home/Xen/Bottleneck/xen/include/xen/multiboot.h \
  /home/Xen/Bottleneck/xen/include/xen/guest_access.h \

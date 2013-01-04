@@ -29,7 +29,7 @@
 #include <xen/sched.h>
 #include <asm/page.h>
 #include <asm/guest_pt.h>
-
+#include <xen/hashtab.h>
 
 
 #define PAGE_ACCESSED (1<<5)
@@ -342,6 +342,43 @@ out:
 
 
 #if GUEST_PAGING_LEVELS == 4
+int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit)
+{
+	unsigned long vkey;
+	unsigned long *key;
+	char *val;
+	unsigned long entry_size = 8;
+	int ret;
+
+	vkey = gw->l1mfn + offset*entry_size;
+	key = &vkey;
+	val = hashtab_search(h, key);
+	if(val == NULL){
+		key = xmalloc(unsigned long);
+		val = xmalloc(char);
+		if(key==NULL || val==NULL){
+			return -1;
+		}
+		*key = vkey;
+		*val = bit;
+		hashtab_insert(h, key, val);
+		ret = 0;
+		return ret;
+	}
+	else{
+		//swap off last and swap on this time
+		if( *val==0 && bit==1 ){
+			*val = 1;
+			ret = 1;
+			return ret;
+		}
+		if(*val!=bit){
+			*val = bit;
+		}
+	}
+	return 0;
+}
+
     unsigned long
 guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
         walk_t *gw, unsigned long cr3,  unsigned char *buff,
@@ -360,20 +397,22 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
     int pse;
     mfn_t top_mfn;
     void *top_map;
-    unsigned long l4_entry_num = 512, l4_offset=0;
+    unsigned long l4_entry_num = 511, l4_offset=0;
+//    unsigned long l4_entry_num = 512, l4_offset=0;
     unsigned long l3_entry_num = 512, l3_offset=0;
     unsigned long l2_entry_num = 512, l2_offset=0;
     unsigned long l1_entry_num = 512, l1_offset=0;
     unsigned long count = 0; 
     unsigned long PTE_FLAGS_MASK;
 
-    unsigned long ppte;
+/*    unsigned long ppte;
     unsigned long ppte_vaddr;  
     unsigned long ppte_low_mask = ((0x3f)<<1);
     unsigned long ppte_high_mask = ((0x1fffff)<<11);
     unsigned long ppte_base = 0xfffff8a000000000;
-    uint32_t ppte_pfec;
-
+    uint32_t ppte_pfec;*/
+	int ret;
+	v->domain->non2a = 0;
 
     top_mfn = gfn_to_mfn_unshare(p2m, cr3 >> PAGE_SHIFT, &p2mt, 0);
     top_map = map_domain_page(mfn_x(top_mfn));
@@ -503,8 +542,20 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                                         && ( !(flag & PAGE_FILE) ) 
                                         )
                                 {
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 1);
+									if(ret==1)
+										(v->domain->non2a)++;
+									else if(ret==-1){
+										printk("<VT>hash table alloc error\n");
+									}
+										
                                     count++;
                                 }
+								else{
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0);
+									if(ret==-1)
+										printk("<VT> hash table alloc error\n");
+								}
                             }
                             else if(type==1){
                             /* WINDOWS check if pte in the swap */
@@ -514,7 +565,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                                         && ( (flag & ((0x1f)<<5)) != 0 )
                                         )
                                 {
-                                    if( (flag & ((0x1<<10))) == 0){ //trasition or swap
+/*                                    if( (flag & ((0x1<<10))) == 0){ //trasition or swap
                                         count++;
                                     }
                                     else{ //point to prototye pte [!!! NOT COMPLETE YET]
@@ -534,8 +585,20 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
 //                                            count++;
                                         }
                                         count++;                                        
-                                    }
+                                    }*/
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 1);
+									if(ret==1)
+										(v->domain->non2a)++;
+									else if(ret==-1){
+										printk("<VT>hash table alloc error\n");
+									}
+									count++;
                                 }
+								else{
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0);
+									if(ret==-1)
+										printk("<VT> hash table alloc error\n");
+								}
                             }
                             else{
                                 printk("<VT> Not support OS type\n");

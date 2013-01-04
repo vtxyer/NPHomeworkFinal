@@ -138,6 +138,7 @@ multicall.o: multicall.c /home/Xen/Bottleneck/xen/include/xen/config.h \
  /home/Xen/Bottleneck/xen/include/xen/nodemask.h \
  /home/Xen/Bottleneck/xen/include/xen/numa.h \
  /home/Xen/Bottleneck/xen/include/asm/numa.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
  /home/Xen/Bottleneck/xen/include/xen/event.h \
  /home/Xen/Bottleneck/xen/include/xen/softirq.h \

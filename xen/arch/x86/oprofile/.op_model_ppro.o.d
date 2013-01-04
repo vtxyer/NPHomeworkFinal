@@ -183,6 +183,7 @@ op_model_ppro.o: op_model_ppro.c \
  /home/Xen/Bottleneck/xen/include/asm/numa.h \
  /home/Xen/Bottleneck/xen/include/xen/multicall.h \
  /home/Xen/Bottleneck/xen/include/asm/multicall.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
  /home/Xen/Bottleneck/xen/include/asm/hvm/vmx/vpmu_core2.h op_x86_model.h \
  op_counter.h

@@ -32,7 +32,7 @@
 #include <xen/keyhandler.h>
 #include <xen/softirq.h>
 #include <xen/mm.h>
-
+#include <xen/hashtab.h>
 
 /*<VT> add*/
 #define GUEST_PAGING_LEVELS 4 //only for compiler
@@ -986,7 +986,33 @@ int end_sample(int domID){
     return 1;
 }
 
-
+static unsigned int swap_hash_val(struct hashtab *h, const void *key)
+{
+	const unsigned long *vkey;
+	vkey = key;
+	return  ((*vkey) & (h->size -1));
+}
+static int swap_hash_cmp(struct hashtab *h, const void *key1, const void *key2)
+{
+	const char *vkey1, *vkey2;
+	vkey1 = key1;
+	vkey2 = key2;
+	if(*vkey1 == *vkey2){
+		return 1;
+	}
+	else
+		return 0;
+}
+int hash_init(struct domain *d)
+{
+	unsigned int size;
+	size = 65535;
+	d->swap_hash = hashtab_create(swap_hash_val, swap_hash_cmp, size);
+	if(!d->swap_hash)
+		return -1;
+	else 
+		return 1;
+}
 
 
 unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long mfn, int flag, void *buff)
@@ -1058,7 +1084,28 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
                             d->test_cr3[i].swap_new_num);
                 }
             }
-            break;       
+            break;      
+
+		case 9:
+			/*init hash table*/
+			hash_init(d);
+			if(d->swap_hash == NULL){
+				printk("<VT>hash table init error\n");
+				return -1;
+			}
+			break;
+		case 10:
+			/*destroy hash table*/
+			hashtab_destroy(d->swap_hash);
+			d->swap_hash = NULL;
+			break;
+		case 11:
+			/*test*/
+            tmp_val = guest_walk_full_tables(v, p2m, &gw, gfn, NULL, pfec[0],
+                  v->arch.paging.mode->guest_levels, d->os_type);
+			printk("count:%lu diff:%lu\n", tmp_val, d->non2a);
+			break;
+
         case 13:
             /*init os type*/
             d->os_type = gfn;

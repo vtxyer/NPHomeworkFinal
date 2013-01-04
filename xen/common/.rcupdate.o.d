@@ -138,6 +138,7 @@ rcupdate.o: rcupdate.c /home/Xen/Bottleneck/xen/include/xen/types.h \
  /home/Xen/Bottleneck/xen/include/asm/numa.h \
  /home/Xen/Bottleneck/xen/include/xen/multicall.h \
  /home/Xen/Bottleneck/xen/include/asm/multicall.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
  /home/Xen/Bottleneck/xen/include/xen/softirq.h \
  /home/Xen/Bottleneck/xen/include/asm/softirq.h \

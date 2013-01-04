@@ -138,6 +138,7 @@ vpmu_core2.o: vpmu_core2.c /home/Xen/Bottleneck/xen/include/xen/config.h \
  /home/Xen/Bottleneck/xen/include/asm/numa.h \
  /home/Xen/Bottleneck/xen/include/xen/multicall.h \
  /home/Xen/Bottleneck/xen/include/asm/multicall.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
  /home/Xen/Bottleneck/xen/include/asm/apic.h \
  /home/Xen/Bottleneck/xen/include/asm/apicdef.h \

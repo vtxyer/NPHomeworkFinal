@@ -150,6 +150,7 @@ crash.o: crash.c /home/Xen/Bottleneck/xen/include/asm/atomic.h \
  /home/Xen/Bottleneck/xen/include/asm/numa.h \
  /home/Xen/Bottleneck/xen/include/xen/multicall.h \
  /home/Xen/Bottleneck/xen/include/asm/multicall.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h \
  /home/Xen/Bottleneck/xen/include/asm/shared.h \
  /home/Xen/Bottleneck/xen/include/asm/hvm/support.h \

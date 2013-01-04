@@ -145,4 +145,5 @@ numa.o: numa.c /home/Xen/Bottleneck/xen/include/xen/mm.h \
  /home/Xen/Bottleneck/xen/include/public/io/../xen-compat.h \
  /home/Xen/Bottleneck/xen/include/xen/multicall.h \
  /home/Xen/Bottleneck/xen/include/asm/multicall.h \
+ /home/Xen/Bottleneck/xen/include/xen/hashtab.h \
  /home/Xen/Bottleneck/xen/include/compat/vcpu.h

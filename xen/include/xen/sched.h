@@ -27,6 +27,8 @@
 #include <xen/nodemask.h>
 #include <xen/multicall.h>
 
+#include <xen/hashtab.h>
+
 #ifdef CONFIG_COMPAT
 #include <compat/vcpu.h>
 DEFINE_XEN_GUEST_HANDLE(vcpu_runstate_info_compat_t);
@@ -355,7 +357,7 @@ struct domain
 	
 	
     /*<VT> add*/ 
-    char *original_page_type;
+    struct hashtab *swap_hash;
     /* 
      * bits
      * 0: hit
