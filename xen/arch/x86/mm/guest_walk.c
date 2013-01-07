@@ -342,7 +342,7 @@ out:
 
 
 #if GUEST_PAGING_LEVELS == 4
-int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit)
+int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit, struct domain *d)
 {
 	unsigned long vkey;
 	unsigned long *key;
@@ -350,9 +350,15 @@ int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit)
 	unsigned long entry_size = 8;
 	int ret;
 
-	vkey = gw->l1mfn + offset*entry_size;
+	//vkey = gw->l1mfn + offset*entry_size;
+	vkey = gw->l2e.l2 + offset*entry_size;
 	key = &vkey;
 	val = hashtab_search(h, key);
+
+	if(d->a2non!=0 && vkey==d->a2non){
+		printk("<VT> key %lx  l1%lx l2%lx l3%lx l4%lx value is %d\n", vkey, gw->l1e.l1, gw->l2e.l2, gw->l3e.l3, gw->l4e.l4 ,bit);
+	}
+
 	if(val == NULL){
 		key = xmalloc(unsigned long);
 		val = xmalloc(char);
@@ -361,13 +367,16 @@ int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit)
 		}
 		*key = vkey;
 		*val = bit;
-		hashtab_insert(h, key, val);
+		ret = hashtab_insert(h, key, val);
+		if(ret!=0)
+			printk("<VT>hash table insert error\n");
 		ret = 0;
 		return ret;
 	}
-	else{
+	else{	
 		//swap off last and swap on this time
 		if( *val==0 && bit==1 ){
+			printk("<VT>hit %lx val %d l1e.l1:%lx\n", vkey, *val, gw->l1e.l1);
 			*val = 1;
 			ret = 1;
 			return ret;
@@ -542,7 +551,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                                         && ( !(flag & PAGE_FILE) ) 
                                         )
                                 {
-									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 1);
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 1, v->domain);
 									if(ret==1)
 										(v->domain->non2a)++;
 									else if(ret==-1){
@@ -552,7 +561,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                                     count++;
                                 }
 								else{
-									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0);
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0, v->domain);
 									if(ret==-1)
 										printk("<VT> hash table alloc error\n");
 								}
@@ -586,7 +595,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                                         }
                                         count++;                                        
                                     }*/
-									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 1);
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 1, v->domain);
 									if(ret==1)
 										(v->domain->non2a)++;
 									else if(ret==-1){
@@ -595,7 +604,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
 									count++;
                                 }
 								else{
-									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0);
+									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0, v->domain);
 									if(ret==-1)
 										printk("<VT> hash table alloc error\n");
 								}

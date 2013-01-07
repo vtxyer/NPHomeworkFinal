@@ -47,7 +47,8 @@ int main(int argc, char *argv[])
 
 
 	if(first == 1){
-			privcmd_hypercall_t hyper0 = { //init environment 
+		printf("into initnitial\n");
+		privcmd_hypercall_t hyper0 = { //init environment 
 				__HYPERVISOR_change_ept_content, 
 				{ domID, os_type, 0, 13, 0}
 			};
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
 				__HYPERVISOR_change_ept_content, 
 				{ domID, 0, 0, 9, 0}
 			};
-			ret = ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &hyper0); 
+			ret = ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &hyper1); 
 			if(ret == -1){
 				printf("hash table alloc error\n");
 				return -1;

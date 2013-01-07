@@ -994,14 +994,16 @@ static unsigned int swap_hash_val(struct hashtab *h, const void *key)
 }
 static int swap_hash_cmp(struct hashtab *h, const void *key1, const void *key2)
 {
-	const char *vkey1, *vkey2;
+	const unsigned long *vkey1, *vkey2;
 	vkey1 = key1;
 	vkey2 = key2;
-	if(*vkey1 == *vkey2){
+
+	if(*vkey1 != *vkey2){
 		return 1;
 	}
-	else
+	else{
 		return 0;
+	}
 }
 int hash_init(struct domain *d)
 {
@@ -1024,6 +1026,8 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
     unsigned long i;
     unsigned long *longBuff;
     unsigned long tmp_val;
+
+
 
     walk_t gw;
     tmp_val = 0;    
@@ -1088,6 +1092,8 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
 
 		case 9:
 			/*init hash table*/
+			d->a2non = 0;
+			d->non2a = 0;
 			hash_init(d);
 			if(d->swap_hash == NULL){
 				printk("<VT>hash table init error\n");
@@ -1105,6 +1111,11 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
                   v->arch.paging.mode->guest_levels, d->os_type);
 			printk("count:%lu diff:%lu\n", tmp_val, d->non2a);
 			break;
+		case 12:
+			/*test hash table*/
+			d->a2non = gfn; 
+			break;
+
 
         case 13:
             /*init os type*/
