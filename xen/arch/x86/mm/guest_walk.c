@@ -355,9 +355,6 @@ int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit, 
 	key = &vkey;
 	val = hashtab_search(h, key);
 
-	if(d->a2non!=0 && vkey==d->a2non){
-		printk("<VT> key %lx  l1%lx l2%lx l3%lx l4%lx value is %d\n", vkey, gw->l1e.l1, gw->l2e.l2, gw->l3e.l3, gw->l4e.l4 ,bit);
-	}
 
 	if(val == NULL){
 		key = xmalloc(unsigned long);
@@ -376,7 +373,6 @@ int compare_swap(struct hashtab *h, walk_t *gw, unsigned long offset, char bit, 
 	else{	
 		//swap off last and swap on this time
 		if( *val==0 && bit==1 ){
-			printk("<VT>hit %lx val %d l1e.l1:%lx\n", vkey, *val, gw->l1e.l1);
 			*val = 1;
 			ret = 1;
 			return ret;
@@ -422,6 +418,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
     uint32_t ppte_pfec;*/
 	int ret;
 	v->domain->non2a = 0;
+	v->domain->a2non = 0;
 
     top_mfn = gfn_to_mfn_unshare(p2m, cr3 >> PAGE_SHIFT, &p2mt, 0);
     top_map = map_domain_page(mfn_x(top_mfn));
@@ -544,6 +541,8 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                             }
                             flag =  guest_l1e_get_flags(gw->l1e);
                             flag = flag & 0xfff;
+
+							(v->domain->a2non)++;
                             /* LINUX check if pte in the swap */
                             if(type == 0){
                                 if( (!( flag & (PAGE_PRESENT|PAGE_PROTNONE)))

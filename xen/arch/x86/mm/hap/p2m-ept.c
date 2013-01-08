@@ -989,8 +989,9 @@ int end_sample(int domID){
 static unsigned int swap_hash_val(struct hashtab *h, const void *key)
 {
 	const unsigned long *vkey;
+	unsigned long mask = (h->size)-1;
 	vkey = key;
-	return  ((*vkey) & (h->size -1));
+	return  ( (*vkey)&mask );
 }
 static int swap_hash_cmp(struct hashtab *h, const void *key1, const void *key2)
 {
@@ -1008,14 +1009,35 @@ static int swap_hash_cmp(struct hashtab *h, const void *key1, const void *key2)
 int hash_init(struct domain *d)
 {
 	unsigned int size;
-	size = 65535;
+
+	size = -1;
+	size >>= 8;
+
 	d->swap_hash = hashtab_create(swap_hash_val, swap_hash_cmp, size);
 	if(!d->swap_hash)
 		return -1;
 	else 
 		return 1;
 }
+void hash_print(struct hashtab *h, unsigned long limit)
+{
+	unsigned long i, size, entry_num;
+	struct hashtab_node *cur;
 
+	printk("<VT> into hash_print\n");
+	size = h->size;
+	for(i=0; i<size; i++){
+		cur = h->htable[i];
+		entry_num = 0;
+   		while ( cur )
+		{
+			cur = cur->next;
+			entry_num++;
+		}
+		if(entry_num>limit)
+			printk("<VT> hash table[%lu]: %lu > %lu\n", i, entry_num, limit);
+	}
+}
 
 unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long mfn, int flag, void *buff)
 {
@@ -1027,8 +1049,7 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
     unsigned long *longBuff;
     unsigned long tmp_val;
 
-
-
+	struct hashtab_info info;
     walk_t gw;
     tmp_val = 0;    
     v = d->vcpu[0];
@@ -1109,11 +1130,13 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
 			/*test*/
             tmp_val = guest_walk_full_tables(v, p2m, &gw, gfn, NULL, pfec[0],
                   v->arch.paging.mode->guest_levels, d->os_type);
-			printk("count:%lu diff:%lu\n", tmp_val, d->non2a);
+			printk("count:%lu diff:%lu total pte:%lu\n", tmp_val, d->non2a, d->a2non);
 			break;
 		case 12:
-			/*test hash table*/
-			d->a2non = gfn; 
+			/*print hash table bucket*/
+			hashtab_stat(d->swap_hash, &info);
+			printk("%d entries and %d/%d buckets used, longest chain length %d\n", 
+					d->swap_hash->nel, info.slots_used, d->swap_hash->size, info.max_chain_len);
 			break;
 
 
