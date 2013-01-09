@@ -249,6 +249,7 @@ struct domain *domain_create(
     spin_lock_init(&(d->recent_cr3_lock));
     spin_lock_init(&(d->test_cr3_lock));
     spin_lock_init(&(d->set_mem_counter_lock));
+	d->swap_hash = NULL;
     d->testFlag = 0;
     d->total_pages = 0;
     d->used_counter = 0;

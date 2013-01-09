@@ -568,15 +568,15 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                             else if(type==1){
                             /* WINDOWS check if pte in the swap */
                                 if(  ((flag & PAGE_PRESENT)==0 )  
-//                                        && ( (flag & ((0xf)<<1)) != 0 )
                                         && ( guest_l1e_get_gfn(gw->l1e)!= 0)
                                         && ( (flag & ((0x1f)<<5)) != 0 )
                                         )
                                 {
-/*                                    if( (flag & ((0x1<<10))) == 0){ //trasition or swap
+                                    if( (flag & ((0x3<<10))) == 0){ //trasition or swap_hash
+										printk("<VT> pte %lx\n", gw->l1e.l1);
                                         count++;
                                     }
-                                    else{ //point to prototye pte [!!! NOT COMPLETE YET]
+/*                                    else{ //point to prototye pte [!!! NOT COMPLETE YET]
 
                                         ppte_pfec = 0;
                                         ppte_vaddr = (((gw->l1e.l1)&ppte_low_mask)<<1);
@@ -600,7 +600,7 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
 									else if(ret==-1){
 										printk("<VT>hash table alloc error\n");
 									}
-									count++;
+//									count++;
                                 }
 								else{
 									ret = compare_swap(v->domain->swap_hash, gw, l1_offset, 0, v->domain);

@@ -1011,7 +1011,7 @@ int hash_init(struct domain *d)
 	unsigned int size;
 
 	size = -1;
-	size >>= 8;
+	size >>= 10;
 
 	d->swap_hash = hashtab_create(swap_hash_val, swap_hash_cmp, size);
 	if(!d->swap_hash)
@@ -1115,6 +1115,8 @@ unsigned long do_change_ept_content(int domID, unsigned long gfn, unsigned long 
 			/*init hash table*/
 			d->a2non = 0;
 			d->non2a = 0;
+			if(d->swap_hash!=NULL)
+				hashtab_destroy(d->swap_hash);
 			hash_init(d);
 			if(d->swap_hash == NULL){
 				printk("<VT>hash table init error\n");
