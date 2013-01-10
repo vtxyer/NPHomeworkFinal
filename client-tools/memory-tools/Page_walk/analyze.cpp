@@ -1,3 +1,5 @@
+#include <iostream>
+extern "C"{
 #include <stdio.h>  
 #include <stdlib.h>  
 #include <errno.h>  
@@ -8,29 +10,29 @@
 #include <xenctrl.h>  
 #include <xen/sys/privcmd.h> 
 #include <unistd.h>
-#include <libvmi/libvmi.h>
 #include <string.h>
 #include <sys/mman.h>
-#include "hashtab.h"
 #include <xs.h>
 #include <xen/hvm/save.h>
+}
+#include <map>
 
-#define DOMAIN "Web"
-#define PID 2
-
-#define mfn_t unsigned long
 #define PAGE_ACCESSED (1<<5)
 #define PAGE_PRESENT  (1)
 #define PAGE_PROTNONE  (1<<8)
 #define PAGE_FILE  (1<<6)
-typedef xc_interface* libvmi_xenctrl_handle_t;
+
+using namespace std;
+
+typedef unsigned long addr_t;
+typedef unsigned long mfn_t;
 
 xc_interface *xch;
 int domID;
 
 struct hash_table
 {
-	struct hashtab *h;
+	map<unsigned long, char> h;
 	unsigned long cr3;
 	unsigned long non2s, s2non;
 };
@@ -47,66 +49,60 @@ struct guest_pagetable_walk
 	mfn_t l2mfn;                /* MFN that the level 2 entry was in */
 	mfn_t l1mfn;                /* MFN that the level 1 entry was in */
 };
-typedef struct xen_instance{
-	libvmi_xenctrl_handle_t xchandle; /**< handle to xenctrl library (libxc) */
-	unsigned long domainid; /**< domid that we are accessing */
-	int xen_version;        /**< version of Xen libxa is running on */
-	int hvm;                /**< nonzero if HVM */
-	xc_dominfo_t info;      /**< libxc info: domid, ssidref, stats, etc */
-	uint8_t addr_width;     /**< guest's address width in bytes: 4 or 8 */
-	struct xs_handle *xshandle;  /**< handle to xenstore daemon */
-	char *name;
-} xen_instance_t;
 
+int get_bit(unsigned long entry, int num, int position)
+{
+	unsigned long mask = 0;
+	int i;
+	for(i=0; i<num; i++){
+		mask<<=1;
+		mask+=1;
+	}
+	return (entry&(mask<<position));
+}
 int page_size_flag (uint64_t entry){
-	return (entry&(1<<7));
+	return get_bit(entry, 1, 7);
 }
 int entry_present(uint64_t entry){
-	return (entry&1);
+	return get_bit(entry, 1, 0);
 }
-int compare_swap(struct hashtab *h, struct guest_pagetable_walk *gw, unsigned long offset, char bit)
+
+
+int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsigned long offset, char bit)
 {
 	unsigned long vkey;
-	unsigned long *key;
-	char *val;
+	char val;
 	unsigned long entry_size = 8;
 	int ret;
+	map<unsigned long, char>::iterator it;
 
-	//vkey = gw->l1mfn + offset*entry_size;
-//	vkey = gw->l2e + offset*entry_size;
 	vkey = gw->va;
-	key = &vkey;
-	val = hashtab_search(h, key);
+	it = table->h.find(vkey);
 
-	if(val == NULL){
-		key = malloc(sizeof(unsigned long));
-		val = malloc(sizeof(char));
-		if(key==NULL || val==NULL){
-			return -1;
-		}
-		*key = vkey;
-		*val = bit;
-		ret = hashtab_insert(h, key, val);
-		if(ret!=0)
-			printf("<VT>hash table insert error\n");
+	if(it == table->h.end()){
+		table->h.insert(map<unsigned long, char>::value_type(vkey, bit));
 		ret = 0;
-		return ret;
 	}
-	else{	
+	else{		
 		//swap off last and swap on this time
-		if( *val==0 && bit==1 ){		
-			*val = 1;
+		val = table->h[vkey];
+		if( val==0 && bit==1 ){	
+			fprintf(stderr, "pte:%lx non2s va:%lx\n", vkey, gw->va);
 			ret = 1;
-			return ret;
 		}
-		if(*val!=bit){
-			*val = bit;
+		else if(val==1 && bit==0){
+			fprintf(stderr, "pte:%lx s2non va:%lx\n", vkey, gw->va);
+			table->s2non++;
+			ret = 0;
+		}
+		if(val!=bit){
+			table->h[vkey] = bit; 
 		}
 	}
-	return 0;
+	return ret;
 }
 
-void* map_page(vmi_instance_t vmi, unsigned long pa_base, int level, struct guest_pagetable_walk *gw)
+void* map_page(unsigned long pa_base, int level, struct guest_pagetable_walk *gw)
 {
 	switch(level){
 		case 1:
@@ -123,9 +119,25 @@ void* map_page(vmi_instance_t vmi, unsigned long pa_base, int level, struct gues
 			break;
 	}
 	pa_base >>= 12;
-
 	return xc_map_foreign_range( xch, domID, XC_PAGE_SIZE, PROT_READ, pa_base);
+}
 
+unsigned long get_vaddr(unsigned long l1offset, unsigned long l2offset, unsigned long l3offset, unsigned long l4offset)
+{
+	unsigned long va = 0, tmp;
+
+	tmp = 0;
+	tmp |= (l1offset<<12);
+	va |= tmp;
+	tmp = 0;
+	tmp |= (l2offset<<21);
+	va |= tmp;tmp = 0;
+	tmp |= (l3offset<<30);
+	va |= tmp;tmp = 0;
+	tmp |= (l4offset<<39);
+	va |= tmp;
+
+	return va;
 }
 int entry_valid(unsigned long entry)
 {
@@ -143,25 +155,24 @@ int pte_entry_valid(unsigned long entry)
 	return entry_present(entry);
 }
 
-unsigned long page_walk_ia32e(vmi_instance_t vmi, addr_t dtb, int os_type, struct hash_table *table)
+unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 {
-	unsigned long count=0;	
+	unsigned long count=0, total=0;	
 	unsigned long *l1p, *l2p, *l3p, *l4p;
 	struct guest_pagetable_walk gw;
 	uint64_t pml4e = 0, pdpte = 0, pde = 0, pte = 0;
 	unsigned long l1offset, l2offset, l3offset, l4offset;
 	int l1num, l2num, l3num, l4num;
 	int flag;
-	struct hashtab *h;
 
-	h = table->h;
 	table->s2non = table->non2s = 0;
 	l1num = 512;
 	l2num = 512;
 	l3num = 512;
-	l4num = 511;
+//	l4num = 511;
+	l4num = 1;
 
-	l4p = map_page(vmi, dtb, 4, &gw);
+	l4p = (unsigned long *)map_page(dtb, 4, &gw);
 	if(l4p == NULL){
 		printf("cr3 map error\n");
 		return -1;
@@ -172,7 +183,7 @@ unsigned long page_walk_ia32e(vmi_instance_t vmi, addr_t dtb, int os_type, struc
 		if( !entry_valid(gw.l4e)){
 			continue;
 		}
-		l3p = map_page(vmi, gw.l4e, 3, &gw);
+		l3p = (unsigned long *)map_page(gw.l4e, 3, &gw);
 		if(l3p == NULL){
 			continue;
 		}
@@ -182,7 +193,7 @@ unsigned long page_walk_ia32e(vmi_instance_t vmi, addr_t dtb, int os_type, struc
 			if( !entry_valid(gw.l3e)){
 				continue;
 			}
-			l2p = map_page(vmi, gw.l3e, 2, &gw);
+			l2p = (unsigned long *)map_page(gw.l3e, 2, &gw);
 			if(l2p == NULL){
 				continue;
 			}
@@ -196,17 +207,29 @@ unsigned long page_walk_ia32e(vmi_instance_t vmi, addr_t dtb, int os_type, struc
 				{
 					continue;
 				}
-				l1p = map_page(vmi, gw.l2e, 1, &gw);
+				l1p = (unsigned long *)map_page(gw.l2e, 1, &gw);
 				if(l1p == NULL){
 					continue;
 				}
 				for(l1offset=0; l1offset<l1num; l1offset++)
 				{
 					gw.l1e = l1p[l1offset];
-					if( !pte_entry_valid(gw.l1e)){
-						gw.va =   (l1offset<<39) | (l3offset<<30) |  (l2offset<<21) | (l1offset<<12);
+					gw.va = get_vaddr(l1offset, l2offset, l3offset, l4offset);
+					
+					total++;
+					if( !pte_entry_valid(gw.l1e))
+					{
 						flag = gw.l1e & 0xfff;
-						if(os_type == 0) //linux
+                        count++;
+						int ret;
+						ret = compare_swap(table, &gw, l1offset, 1);
+						if(ret==1)
+						{
+							table->non2s++;	
+						}
+						else if(ret == -1)
+							printf("hash alloc error\n");
+/*						if(os_type == 0) //linux
 						{
 							if( ( !( flag & (PAGE_PRESENT)))
 									&& (gw.l1e != 0) 
@@ -214,7 +237,7 @@ unsigned long page_walk_ia32e(vmi_instance_t vmi, addr_t dtb, int os_type, struc
 							  )
 							{
 								int ret;
-								ret = compare_swap(h, &gw, l1offset, 1);
+								ret = compare_swap(table, &gw, l1offset, 1);
 								if(ret==1)
 								{
 									table->non2s++;	
@@ -223,111 +246,76 @@ unsigned long page_walk_ia32e(vmi_instance_t vmi, addr_t dtb, int os_type, struc
 									printf("hash alloc error\n");
 								count++;									
 							}
-							else
-							{
-							}
 						}
 						else if(os_type == 1) //windows
 						{
-						}
+                            if(  ((flag & PAGE_PRESENT)==0 )  
+                                    && ( gw.l1e!= 0)
+                                    && ( (flag & ((0x1f)<<5)) != 0 )
+                                    )
+                            {
+//                                if( (flag & ((0x3<<10))) == 0){ //trasition or swap_hash
+                                    count++;
+									int ret;
+									ret = compare_swap(table, &gw, l1offset, 1);
+									if(ret==1)
+									{
+										table->non2s++;	
+									}
+									else if(ret == -1)
+										printf("hash alloc error\n");
+//                                }
+							}
+						}*/
 					}
 				 	else
 					{
 						int ret;
-						ret = compare_swap(h, &gw, l1offset, 0);
-						if(ret==1)
-						{
-							table->s2non++;	
-						}
-						else if(ret == -1)
+						ret = compare_swap(table, &gw, l1offset, 0);
+						if(ret == -1)
 							printf("hash alloc error\n");
 					}
 				}
-//				free(l1p);
 			}
-//			free(l2p);
 		}
-//		free(l3p);
 	}
-//	if(l4p!=NULL)
-//		free(l4p);
 
+	printf("total: %lu\n", total);
 	return count;
 }
 
 
-static unsigned int swap_hash_val(struct hashtab *h, const void *key)
-{
-	const unsigned long *vkey;
-	unsigned long mask = (h->size)-1;
-	vkey = key;
-	return  ( (*vkey)&mask );
-}
-static int swap_hash_cmp(struct hashtab *h, const void *key1, const void *key2)
-{
-	const unsigned long *vkey1, *vkey2;
-	vkey1 = key1;
-	vkey2 = key2;
 
-	if(*vkey1 != *vkey2){
-		return 1;
-	}
-	else{
-		return 0;
-	}
-}
-int hash_init(struct hash_table *h)
-{
-	unsigned int size;
-
-	size = -1;
-	size >>= 10;
-
-	printf("size %lu\n", (size*sizeof(struct hashtab_node))/(1024*1024) );
-
-	h->h = hashtab_create(swap_hash_val, swap_hash_cmp, size);
-	if(!h)
-		return -1;
-	else 
-		return 1;
-}
 
 int main(int argc, char *argv[])  
 { 
 	int fd, ret, i;  
-	unsigned long cr3, value;
-	vmi_instance_t vmi;
+	unsigned long cr3, value, os_type;
 	unsigned long offset = 0;
 	struct hash_table global_hash;
-	struct hashtab_info info;
 
-
+	
 	xch =  xc_interface_open(0,0,0);
 	if(xch == NULL)
 		printf("xch init error\n");
-	domID = atoi(argv[1]);
 
-	//	cr3 = (addr_t)strtoul(argv[1], NULL, 16);
-	if (vmi_init(&vmi, VMI_AUTO | VMI_INIT_COMPLETE, DOMAIN) == VMI_FAILURE){
-		printf("Failed to init LibVMI library.\n");
-		return -1;
-	}
-
-	ret = hash_init(&global_hash);
-	if(ret==-1){
-		printf("hash init error\n");
+	if(argc<3){
+		printf("%s domID os_type(linux->0 windows->1)\n", argv[0]);
 		exit(1);
 	}
+	domID = atoi(argv[1]);
+	os_type = atoi(argv[2]);
+
+	//	cr3 = (addr_t)strtoul(argv[1], NULL, 16);
 
 
 	while(1){
+		printf("input cr3: ");
 		scanf("%lx", &cr3);
-		value = page_walk_ia32e(vmi, cr3, 0, &global_hash);
+		value = page_walk_ia32e(cr3, 0, &global_hash);
 		printf("Page walk total:%lu non->swap:%lu swap->non:%lu\n", value, global_hash.non2s, global_hash.s2non);
-		hashtab_stat(global_hash.h, &info);
-		printf("slot used:%d max:%d\n", info.slots_used, info.max_chain_len);
+		fprintf(stderr, "ok\n");		
 	}
-
 
 
 	/*    privcmd_hypercall_t hyper0 = {   //show recent_cr3

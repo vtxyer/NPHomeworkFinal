@@ -573,7 +573,6 @@ guest_walk_full_tables(struct vcpu *v, struct p2m_domain *p2m,
                                         )
                                 {
                                     if( (flag & ((0x3<<10))) == 0){ //trasition or swap_hash
-										printk("<VT> pte %lx\n", gw->l1e.l1);
                                         count++;
                                     }
 /*                                    else{ //point to prototye pte [!!! NOT COMPLETE YET]
