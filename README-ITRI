@@ -23,7 +23,7 @@ I.SETUP ENVIRONMENT
             we have already patched xen source in our CD, so you can just copy xen-4.1.2 directory from our CD. Then do the follows steps:
                 1. cp -r /media/xen-4.1.2 /xen-4.1.2 (we assume CD-ROM will be mounted on /media)
                 2. cd /xen-4.1.2 and "make clean"(there are maybe some errors related stubdom, which you can just ignore)    
-                3. install libraries required for building XEN: dev86, glibc-32bits, pciutils-devel, SDL_net, SDL-devel, SDL-net-devel 
+                3. install libraries required for building XEN: dev86, glibc-32bits, pciutils-devel, SDL_net, SDL-devel, SDL-net-devel iasl uuid uuid-devel yajl yajl-devel  
                 4. run "INSTALL-XEN.sh"(if there are build errors, most likely it's due to missing libraries. Just install the library required according to the error messages.
 				   And then use "make clean" and try to build XEN again.
  
