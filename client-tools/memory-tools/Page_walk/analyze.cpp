@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
 	list_size = 2;
 
 
-	/*
+	
 	//Get cr3 from Hypervisor
-	fd = open("/proc/xen/privcmd", O_RDWR);  
+/*	fd = open("/proc/xen/privcmd", O_RDWR);  
 	if (fd < 0) {  
 		perror("open");  
 	  	exit(1);  
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	}
 	cr3_list[i+1] = 0;
 	list_size = 10; //limit to size 10
-	*/
+*/	
 
 
 	while(1){
@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
 		each_change_page = check_cr3_list(data_map, cr3_list, list_size);
 		calculate_all_page(data_map, os_type, result);
 
-		printf("Invalid Memory:%lu[M] Valid Memory:%lu[M] Total valid Memory:%lu[M] map size:%lu round %d\n\n", 
-					result[0]/256, result[1]/256, result[2]/256, data_map[cr3_list[0]].h.size(), round);
+		printf("Invalid Memory:%lu[M] Valid Memory:%lu[M] Total valid Memory:%lu[M] map size:%lu[M] round %d\n\n", 
+					result[0]/256, result[1]/256, result[2]/256, data_map[cr3_list[0]].h.size()/(1024*1024), round);
 		round++;
 //		retrieve_list(data_map, round);
 		sleep(1);		

@@ -173,8 +173,11 @@ unsigned long check_cr3_list(DATAMAP &list, unsigned long *cr3_list, int list_si
 	return total_change_page;
 }
 
-
-int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsigned long offset, char bit)
+/*
+ * valid_bit=0 => in swap
+ * valid_bit=1 => is valid
+ * */
+int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsigned long offset, char valid_bit)
 {
 	unsigned long vkey;
 	char val, tmp;
@@ -183,17 +186,18 @@ int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsi
 	map<unsigned long, char>::iterator it;
 
 	vkey = gw->va;
+//	vkey = (gw->l2e)+offset*8;
 	it = table->h.find(vkey);
 
 	if(it == table->h.end()){
-		table->h.insert(map<unsigned long, char>::value_type(vkey, bit));
+		table->h.insert(map<unsigned long, char>::value_type(vkey, valid_bit));
 		ret = 0;
 	}
 	else{	
 		char &val_ref = table->h[vkey];	
 		val = val_ref&1;
 		//non-swap to swap bit
-		if( val==0 && bit==1 ){	
+		if( val==1 && valid_bit==0 ){	
 //			fprintf(stderr, "bit:%x non2s va:%lx\n", val_ref, gw->va);
 			add_change_number(val_ref);
 			tmp = get_change_number(val_ref);			
@@ -205,7 +209,7 @@ int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsi
 
 		}
 		//swap to non-swap bit
-		else if(val==1 && bit==0){
+		else if(val==0 && valid_bit==1){
 //			fprintf(stderr, "bit:%x s2non va:%lx\n", val_ref, gw->va);
 			add_change_number(val_ref);			
 			(table->s2non)++;
@@ -213,19 +217,16 @@ int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsi
 		}
 
 
-			
-
-
 		if((get_change_number(val_ref)>=CHANGE_LIMIT)){
-			if(bit==1)
+			if(valid_bit==0)
 				(table->activity_page)[0]++;
 			else
 				(table->activity_page)[1]++;
 		}		
 
-		if(val!=bit){
+		if(val!=valid_bit){
 			val_ref &= 0xfe;
-			val_ref |= bit; 
+			val_ref |= valid_bit; 
 		}
 	}
 	return ret;
@@ -305,6 +306,10 @@ unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 					gw.l1e = l1p[l1offset];
 					gw.va = get_vaddr(l1offset, l2offset, l3offset, l4offset);
 
+
+					if(gw.va == 0)
+						continue;
+
 					if( !pte_entry_valid(gw.l1e))
 					{
 						if(get_access_bit(gw.l1e)==1){
@@ -315,7 +320,7 @@ unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 						flag = gw.l1e & 0xfff;
 						count++;
 						int ret;
-						ret = compare_swap(table, &gw, l1offset, 1);
+						ret = compare_swap(table, &gw, l1offset, 0);
 						/*						if(os_type == 0) //linux
 												{
 												if( ( !( flag & (PAGE_PRESENT)))
@@ -324,7 +329,7 @@ unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 												)
 												{
 												int ret;
-												ret = compare_swap(table, &gw, l1offset, 1);
+												ret = compare_swap(table, &gw, l1offset, 0);
 												if(ret==1)
 												{
 												table->non2s++;	
@@ -344,7 +349,7 @@ unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 						//                                if( (flag & ((0x3<<10))) == 0){ //trasition or swap_hash
 						count++;
 						int ret;
-						ret = compare_swap(table, &gw, l1offset, 1);
+						ret = compare_swap(table, &gw, l1offset, 0);
 						if(ret==1)
 						{
 						table->non2s++;	
@@ -359,7 +364,7 @@ unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 					{
 						int ret;
 						(table->total_valid_pages)++;
-						ret = compare_swap(table, &gw, l1offset, 0);
+						ret = compare_swap(table, &gw, l1offset, 1);
 					}
 				}	 
 				munmap(l1p, XC_PAGE_SIZE);
