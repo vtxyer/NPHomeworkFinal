@@ -7,7 +7,8 @@ using namespace std;
 #define PAGE_FILE  (1<<6)
 
 #define CHANGE_LIMIT 1
-#define MAX_ROUND_INTERVAL 10000
+#define MAX_ROUND_INTERVAL 10
+#define ADDR_MASK 0x0000ffffffffffff
 
 xc_interface *xch;
 int domID;
@@ -15,11 +16,14 @@ int domID;
 typedef unsigned long addr_t;
 typedef unsigned long mfn_t;
 typedef char byte;
-typedef map<unsigned long, char> HASHMAP;
+typedef map<unsigned long, byte> HASHMAP;
+typedef map<unsigned long, struct hash_table> DATAMAP;
+typedef map<unsigned long, byte> SYSTEM_MAP;
+
 
 struct hash_table
 {
-	map<unsigned long, char> h;
+	map<unsigned long, byte> h; //bit 0=>valid_bit, 1~8 => counter
 	unsigned long cr3;
 	unsigned long non2s, s2non, count;
 	unsigned long change_page, total_valid_pages;
@@ -40,8 +44,8 @@ struct guest_pagetable_walk
 	mfn_t l1mfn;                /* MFN that the level 1 entry was in */
 };
 
-
-typedef map<unsigned long, struct hash_table> DATAMAP;
+SYSTEM_MAP system_map_wks;
+SYSTEM_MAP system_map_swap;
 
 
 //1~7 bits represent change number
@@ -106,7 +110,8 @@ int entry_valid(unsigned long entry)
 	int flag = entry & 0xfff;
 	uint32_t gflags, mflags, iflags, rc = 0;
 
-	if( (entry&1) == 0 || (get_access_bit(entry) == 0)){
+//	if( (entry&1) == 0 || (get_access_bit(entry) == 0)){
+	if( (entry&1) == 0 ){
 		return 0; //invalid
 	}
 	else
@@ -179,16 +184,28 @@ unsigned long check_cr3_list(DATAMAP &list, unsigned long *cr3_list, int list_si
  * */
 int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsigned long offset, char valid_bit)
 {
-	unsigned long vkey;
+	unsigned long vkey, paddr;
 	char val, tmp;
 	unsigned long entry_size = 8;
 	int ret = 0;
 	map<unsigned long, char>::iterator it;
+	SYSTEM_MAP *system_map;
 
 	vkey = gw->va;
-//	vkey = (gw->l2e)+offset*8;
-	it = table->h.find(vkey);
+	/*!!!!!! NOTE !!!!!!!
+	 * I assume bit 13~48 also represent swap file offset
+	 * */
+	paddr = ((gw->l1e) & ADDR_MASK)>>12;
+	if(valid_bit == 0){
+		system_map = &system_map_swap;
+	}
+	else{
+		system_map = &system_map_wks;
+	}
 
+
+	/*insert into each process map*/
+	it = table->h.find(vkey);
 	if(it == table->h.end()){
 		table->h.insert(map<unsigned long, char>::value_type(vkey, valid_bit));
 		ret = 0;
@@ -216,13 +233,23 @@ int compare_swap(struct hash_table *table, struct guest_pagetable_walk *gw, unsi
 			ret = 0;		
 		}
 
-
 		if((get_change_number(val_ref)>=CHANGE_LIMIT)){
 			if(valid_bit==0)
 				(table->activity_page)[0]++;
 			else
 				(table->activity_page)[1]++;
-		}		
+
+			/*check if paddr already stored in system_map*/
+			/*if(system_map->count(paddr) > 0){
+				byte *paddr_times = &(system_map->at(paddr));
+				if((*paddr_times) < 0xff)
+					*paddr_times += 1;
+				(table->activity_page)[valid_bit]++;
+			}
+			else{
+				system_map->insert(pair<unsigned long, byte>(paddr, 1));
+			}*/
+		}
 
 		if(val!=valid_bit){
 			val_ref &= 0xfe;
@@ -305,7 +332,6 @@ unsigned long page_walk_ia32e(addr_t dtb, int os_type, struct hash_table *table)
 					total++;
 					gw.l1e = l1p[l1offset];
 					gw.va = get_vaddr(l1offset, l2offset, l3offset, l4offset);
-
 
 					if(gw.va == 0)
 						continue;

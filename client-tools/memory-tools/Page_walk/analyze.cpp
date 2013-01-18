@@ -46,13 +46,13 @@ int main(int argc, char *argv[])
 
 //	cr3 = (addr_t)strtoul(argv[1], NULL, 16);
 //	fscanf(stdin, "%lx %lx %lx %lx %lx %lx", &cr3_list[0], &cr3_list[1], &cr3_list[2], &cr3_list[3], &cr3_list[4], &cr3_list[5]);
-	fscanf(stdin, "%lx %lx", &cr3_list[0], &cr3_list[1]);
-	list_size = 2;
+//	fscanf(stdin, "%lx %lx", &cr3_list[0], &cr3_list[1]);
+//	list_size = 1;
 
 
 	
 	//Get cr3 from Hypervisor
-/*	fd = open("/proc/xen/privcmd", O_RDWR);  
+	fd = open("/proc/xen/privcmd", O_RDWR);  
 	if (fd < 0) {  
 		perror("open");  
 	  	exit(1);  
@@ -61,24 +61,31 @@ int main(int argc, char *argv[])
 		  __HYPERVISOR_change_ept_content, 
 		  { domID, 0, 0, 15, 0}
 	};
-	ret = ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &hyper0); 
     privcmd_hypercall_t hyper1 = { 
 		  __HYPERVISOR_change_ept_content, 
 		  { domID, 0, 0, 16, cr3_list}
 	};
-	ret = ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &hyper1);
-	list_size = cr3_list[0];
-	for(i=1; i<=list_size; i++){
-		cr3_list[i-1] = cr3_list[i];
-	}
-	cr3_list[i+1] = 0;
-	list_size = 10; //limit to size 10
-*/	
-
+	
 
 	while(1){
+		for(i=0; i<list_size; i++)
+			cr3_list[i] = 0;
+		
+		ret = ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &hyper0); 
+		ret = ioctl(fd, IOCTL_PRIVCMD_HYPERCALL, &hyper1);
+		list_size = cr3_list[0];
+		for(i=1; i<=list_size; i++){
+			cr3_list[i-1] = cr3_list[i];
+		}
+		cr3_list[i+1] = 0;
+		list_size = 5; //limit to size 5
+
+
+		system_map_wks.clear();
+		system_map_swap.clear();
 		total_change_page = 0;
 		each_change_page  = 0;
+
 		walk_cr3_list(data_map, cr3_list, list_size, os_type, round);
 		each_change_page = check_cr3_list(data_map, cr3_list, list_size);
 		calculate_all_page(data_map, os_type, result);
@@ -86,8 +93,8 @@ int main(int argc, char *argv[])
 		printf("Invalid Memory:%lu[M] Valid Memory:%lu[M] Total valid Memory:%lu[M] map size:%lu[M] round %d\n\n", 
 					result[0]/256, result[1]/256, result[2]/256, data_map[cr3_list[0]].h.size()/(1024*1024), round);
 		round++;
-//		retrieve_list(data_map, round);
-		sleep(1);		
+		retrieve_list(data_map, round);
+		sleep(2);		
 	}
 
 	return 0;
